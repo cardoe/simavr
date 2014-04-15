@@ -100,9 +100,31 @@ static int avr_flash_ioctl(struct avr_io_t * port, uint32_t ctl, void * io_param
 	return 0;
 }
 
+static void
+avr_flash_reset(avr_io_t * port)
+{
+	avr_flash_t * p = (avr_flash_t *) port;
+
+	avr_flash_clear_temppage(p);
+}
+
+static void
+avr_flash_dealloc(struct avr_io_t * port)
+{
+	avr_flash_t * p = (avr_flash_t *) port;
+
+	if (p->tmppage)
+		free(p->tmppage);
+
+	if (p->tmppage_used)
+		free(p->tmppage_used);
+}
+
 static	avr_io_t	_io = {
 	.kind = "flash",
 	.ioctl = avr_flash_ioctl,
+	.reset = avr_flash_reset,
+	.dealloc = avr_flash_dealloc,
 };
 
 void avr_flash_init(avr_t * avr, avr_flash_t * p)
