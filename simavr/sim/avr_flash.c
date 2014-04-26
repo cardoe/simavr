@@ -138,8 +138,6 @@ void avr_flash_init(avr_t * avr, avr_flash_t * p)
 	if (!p->tmppage_used)
 		p->tmppage_used = malloc(p->spm_pagesize / 2);
 
-	avr_flash_clear_temppage(p);
-
 	avr_register_io(avr, &p->io);
 	avr_register_vector(avr, &p->flash);
 
