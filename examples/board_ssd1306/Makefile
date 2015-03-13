@@ -1,5 +1,5 @@
 # 
-# 	Copyright 2008-2012 Michel Pollet <buserror@gmail.com>
+# 	Copyright 2008-2011 Michel Pollet <buserror@gmail.com>
 #
 #	This file is part of simavr.
 #
@@ -16,34 +16,37 @@
 #	You should have received a copy of the GNU General Public License
 #	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
 
-target=	i2ctest
+target=	ssd1306demo
 firm_src = ${wildcard at*${board}.c}
 firmware = ${firm_src:.c=.axf}
-simavr = ../..
+simavr = ../../
 
 IPATH = .
-IPATH += ${simavr}/examples/shared
-IPATH += ${simavr}/examples/parts
+IPATH += ../parts
 IPATH += ${simavr}/include
+IPATH += ${simavr}/simavr/sim
+IPATH += ${simavr}/simavr/sim
 IPATH += ${simavr}/simavr/sim
 
 VPATH = .
-VPATH += ${simavr}/examples/shared
-VPATH += ${simavr}/examples/parts
+VPATH += ../parts
 
+LDFLAGS += -lpthread
 
-all: obj ${firmware} ${target} 
+include ../Makefile.opengl
+
+all: obj atmega32_ssd1306.axf ${target}
+
+atmega32_ssd1306.axf: atmega32_ssd1306.c ssd1306.c images.c
 
 include ${simavr}/Makefile.common
 
-atmega1280_${target}.axf: atmega1280_${target}.c twimaster.c
-atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.c
-atmega1280_${target}.axf: ${simavr}/examples/shared/avr_twi_master.h
-
 board = ${OBJ}/${target}.elf
 
+${board} : ${OBJ}/ac_input.o
+${board} : ${OBJ}/ssd1306_virt.o
+${board} : ${OBJ}/ssd1306_glut.o
 ${board} : ${OBJ}/${target}.o
-${board} : ${OBJ}/i2c_eeprom.o
 
 ${target}: ${board}
 	@echo $@ done

@@ -162,7 +162,7 @@ uint8_t avr_core_watch_read(avr_t *avr, uint16_t addr)
  * if it's an IO register (> 31) also (try to) call any callback that was
  * registered to track changes to that register.
  */
-static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
+static inline void _avr_set_r(avr_t * avr, uint16_t r, uint8_t v)
 {
 	REG_TOUCH(avr, r);
 
@@ -173,7 +173,7 @@ static inline void _avr_set_r(avr_t * avr, uint8_t r, uint8_t v)
 		SREG();
 	}
 	if (r > 31) {
-		uint8_t io = AVR_DATA_TO_IO(r);
+		avr_io_addr_t io = AVR_DATA_TO_IO(r);
 		if (avr->io[io].w.c)
 			avr->io[io].w.c(avr, r, v, avr->io[io].w.param);
 		else
@@ -206,7 +206,7 @@ inline void _avr_sp_set(avr_t * avr, uint16_t sp)
  */
 static inline void _avr_set_ram(avr_t * avr, uint16_t addr, uint8_t v)
 {
-	if (addr < 256)
+	if (addr < MAX_IOs + 31)
 		_avr_set_r(avr, addr, v);
 	else
 		avr_core_watch_write(avr, addr, v);
@@ -224,8 +224,8 @@ static inline uint8_t _avr_get_ram(avr_t * avr, uint16_t addr)
 		 */
 		READ_SREG_INTO(avr, avr->data[R_SREG]);
 		
-	} else if (addr > 31 && addr < 256) {
-		uint8_t io = AVR_DATA_TO_IO(addr);
+	} else if (addr > 31 && addr < 31 + MAX_IOs) {
+		avr_io_addr_t io = AVR_DATA_TO_IO(addr);
 		
 		if (avr->io[io].r.c)
 			avr->data[addr] = avr->io[io].r.c(avr, addr, avr->io[io].r.param);
@@ -581,6 +581,7 @@ static inline int _avr_is_instruction_32_bits(avr_t * avr, avr_flashaddr_t pc)
  */
 avr_flashaddr_t avr_run_one(avr_t * avr)
 {
+run_one_again:
 #if CONFIG_SIMAVR_TRACE
 	/*
 	 * this traces spurious reset or bad jumps
@@ -887,7 +888,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 			if ((opcode & 0xff0f) == 0x9408) {
 				get_sreg_bit(opcode);
 				STATE("%s%c\n", opcode & 0x0080 ? "cl" : "se", _sreg_bit_name[b]);
-				avr->sreg[b] = (opcode & 0x0080) == 0;
+				avr_sreg_set(avr, b, (opcode & 0x0080) == 0);
 				SREG();
 			} else switch (opcode) {
 				case 0x9588: { // SLEEP -- 1001 0101 1000 1000
@@ -941,7 +942,7 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 					new_pc = _avr_pop_addr(avr);
 					cycle += 1 + avr->address_size;
 					if (opcode & 0x10)	// reti
-						avr->sreg[S_I] = 1;
+						avr_sreg_set(avr, S_I, 1);
 					STATE("ret%s\n", opcode & 0x10 ? "i" : "");
 					TRACE_JUMP();
 					STACK_FRAME_POP();
@@ -1402,6 +1403,16 @@ avr_flashaddr_t avr_run_one(avr_t * avr)
 
 	}
 	avr->cycle += cycle;
+	
+	if ((avr->state == cpu_Running) && 
+		(avr->run_cycle_count > cycle) && 
+		(avr->interrupt_state == 0))
+	{
+		avr->run_cycle_count -= cycle;
+		avr->pc = new_pc;
+		goto run_one_again;
+	}
+	
 	return new_pc;
 }
 

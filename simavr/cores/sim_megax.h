@@ -1,5 +1,5 @@
 /*
-	sim_mega128.c
+	sim_megax.h
 
 	Copyright 2008, 2009 Michel Pollet <buserror@gmail.com>
 
@@ -38,7 +38,7 @@ void mx_init(struct avr_t * avr);
 void mx_reset(struct avr_t * avr);
 
 /*
- * This is a template for all of the 8/32/64 devices, hopefully
+ * This is a template for all of the 8/16/32 devices, hopefully
  */
 struct mcu_t {
 	avr_t          core;
@@ -88,21 +88,16 @@ const struct mcu_t SIM_CORENAME = {
 	.extint = {
 		AVR_EXTINT_DECLARE(0, 'D', PD2),
 		AVR_EXTINT_DECLARE(1, 'D', PD3),
+#ifdef INT2
+		AVR_ASYNC_EXTINT_DECLARE(2, 'B', PB2),
+#endif
 	},
 #ifdef PORTA
-	.porta = {
-		.name = 'A', .r_port = PORTA, .r_ddr = DDRA, .r_pin = PINA,
-	},
+	AVR_IOPORT_DECLARE(a, 'A', A),
 #endif
-	.portb = {
-		.name = 'B', .r_port = PORTB, .r_ddr = DDRB, .r_pin = PINB,
-	},
-	.portc = {
-		.name = 'C', .r_port = PORTC, .r_ddr = DDRC, .r_pin = PINC,
-	},
-	.portd = {
-		.name = 'D', .r_port = PORTD, .r_ddr = DDRD, .r_pin = PIND,
-	},
+	AVR_IOPORT_DECLARE(b, 'B', B),
+	AVR_IOPORT_DECLARE(c, 'C', C),
+	AVR_IOPORT_DECLARE(d, 'D', D),
 	.uart = {
 	   // no PRUSART .disabled = AVR_IO_REGBIT(PRR,PRUSART0),
 		.name = '0',
@@ -288,23 +283,7 @@ const struct mcu_t SIM_CORENAME = {
 			},
 		},
 	},
-	.spi = {
-
-		.r_spdr = SPDR,
-		.r_spcr = SPCR,
-		.r_spsr = SPSR,
-
-		.spe = AVR_IO_REGBIT(SPCR, SPE),
-		.mstr = AVR_IO_REGBIT(SPCR, MSTR),
-
-		.spr = { AVR_IO_REGBIT(SPCR, SPR0), AVR_IO_REGBIT(SPCR, SPR1), AVR_IO_REGBIT(SPSR, SPI2X) },
-		.spi = {
-			.enable = AVR_IO_REGBIT(SPCR, SPIE),
-			.raised = AVR_IO_REGBIT(SPSR, SPIF),
-			.vector = SPI_STC_vect,
-		},
-	},
-	
+	AVR_SPI_DECLARE(0, 0),
 	.twi = {
 
 		.r_twcr = TWCR,

@@ -55,7 +55,7 @@ enum {
 	R_SREG	= 32+0x3f,
 
 	// maximum number of IO registers, on normal AVRs
-	MAX_IOs	= 279,	// Bigger AVRs need more than 256-32 (mega1280)
+	MAX_IOs	= 280,	// Bigger AVRs need more than 256-32 (mega1280)
 };
 
 #define AVR_DATA_TO_IO(v) ((v) - 32)
@@ -132,9 +132,14 @@ struct avr_trace_data_t {
 	uint32_t	touched[256 / 32];	// debug
 };
 
+
 #define AVR_FUSE_LOW	0
 #define AVR_FUSE_HIGH	1
 #define AVR_FUSE_EXT	2
+
+typedef void (*avr_run_t)(
+		struct avr_t * avr);
+
 
 /*
  * Main AVR instance. Some of these fields are set by the AVR "Core" definition files
@@ -167,6 +172,11 @@ typedef struct avr_t {
 	// like, sleeping.
 	avr_cycle_count_t	cycle;		// current cycle
 
+	// these next two allow the core to freely run between cycle timers and also allows
+	// for a maximum run cycle limit... run_cycle_count is set during cycle timer processing.
+	avr_cycle_count_t	run_cycle_count;	// cycles to run before next timer
+	avr_cycle_count_t	run_cycle_limit;	// maximum run cycle interval limit
+
 	/**
 	 * Sleep requests are accumulated in sleep_usec until the minimum sleep value
 	 * is reached, at which point sleep_usec is cleared and the sleep request
@@ -191,7 +201,7 @@ typedef struct avr_t {
 	 * it can, and a "gdb" mode that also watchouts for gdb events
 	 * and is a little bit slower.
 	 */
-	void (*run)(struct avr_t * avr);
+	avr_run_t	run;
 
 	/*!
 	 * Sleep default behaviour.
@@ -210,7 +220,12 @@ typedef struct avr_t {
 	// in the opcode decoder.
 	// This array is re-synthesized back/forth when SREG changes
 	uint8_t		sreg[8];
-	uint8_t		i_shadow;	// used to detect edges on I flag
+
+	/* Interrupt state:
+		00: idle (no wait, no pending interrupts) or disabled
+		<0: wait till zero
+		>0: interrupt pending */
+	int8_t		interrupt_state;	// interrupt state
 
 	/* 
 	 * ** current PC **
